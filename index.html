@@ -1,0 +1,430 @@
+
+
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Virtual Pharmacy Game</title>
+    <style>
+        * { box-sizing: border-box; margin: 0; padding: 0; }
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background-color: #eef2f3;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            height: 100vh;
+            justify-content: center;
+        }
+        #game-container {
+            width: 800px;
+            height: 500px;
+            background: linear-gradient(to bottom, #bbdefb, #e3f2fd);
+            border: 6px solid #333;
+            border-radius: 12px;
+            position: relative;
+            overflow: hidden;
+            box-shadow: 0 10px 20px rgba(0,0,0,0.2);
+        }
+        /* Pharmacy Shelves */
+        .shelf {
+            position: absolute;
+            right: 40px;
+            top: 60px;
+            width: 300px;
+            height: 250px;
+            background: #8d6e63;
+            border-radius: 6px;
+            border-bottom: 8px solid #5d4037;
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            gap: 10px;
+            padding: 15px;
+            align-content: end;
+        }
+        .shelf-title {
+            position: absolute;
+            top: -30px;
+            left: 0;
+            width: 100%;
+            text-align: center;
+            font-weight: bold;
+            color: #4e342e;
+        }
+        /* Medications with Animation */
+        .medication {
+            background: white;
+            border: 2px solid #0288d1;
+            border-radius: 4px;
+            padding: 8px 4px;
+            text-align: center;
+            font-size: 11px;
+            font-weight: bold;
+            cursor: grab;
+            transition: transform 0.2s, box-shadow 0.2s;
+            box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+        }
+        .medication:hover {
+            transform: scale(1.1) translateY(-5px);
+            box-shadow: 0 6px 12px rgba(0,0,0,0.15);
+        }
+        /* Counter and Basket */
+        .counter {
+            position: absolute;
+            bottom: 0;
+            left: 0;
+            width: 100%;
+            height: 140px;
+            background: #b0bec5;
+            border-top: 10px solid #78909c;
+        }
+        .basket {
+            position: absolute;
+            bottom: 40px;
+            right: 120px;
+            width: 140px;
+            height: 80px;
+            border: 4px dashed #2e7d32;
+            border-radius: 8px;
+            background: rgba(200, 230, 201, 0.6);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-weight: bold;
+            color: #2e7d32;
+            transition: background 0.3s;
+        }
+        .basket.drag-over {
+            background: rgba(129, 199, 132, 0.9);
+            transform: scale(1.05);
+        }
+        /* Virtual Customer with Entry Animation */
+        .customer-bubble {
+            position: absolute;
+            left: 50px;
+            top: 80px;
+            background: white;
+            padding: 15px;
+            border-radius: 15px;
+            max-width: 250px;
+            box-shadow: 0 4px 10px rgba(0,0,0,0.1);
+            animation: bounceIn 0.6s ease-out;
+            font-weight: 500;
+        }
+        .customer-bubble::after {
+            content: '';
+            position: absolute;
+            bottom: -10px;
+            left: 40px;
+            border-width: 10px 10px 0;
+            border-style: solid;
+            border-color: white transparent;
+            display: block;
+            width: 0;
+        }
+        .customer-sprite {
+            position: absolute;
+            left: 70px;
+            bottom: 130px;
+            font-size: 80px;
+            animation: walkIn 1s ease-out;
+        }
+        /* UI Panel */
+        #ui-panel {
+            position: absolute;
+            top: 15px;
+            left: 15px;
+            background: rgba(0,0,0,0.7);
+            color: white;
+            padding: 10px 20px;
+            border-radius: 20px;
+            font-size: 16px;
+        }
+        #feedback {
+            position: absolute;
+            bottom: 100px;
+            left: 40%;
+            transform: translateX(-50%);
+            font-size: 24px;
+            font-weight: bold;
+            text-shadow: 1px 1px 2px rgba(0,0,0,0.3);
+            display: none;
+        }
+        /* Overlay Modals (Menu Screens) */
+        .overlay-screen {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0, 0, 0, 0.85);
+            color: white;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            z-index: 10;
+            text-align: center;
+        }
+        .menu-btn {
+            padding: 12px 35px;
+            font-size: 18px;
+            font-weight: bold;
+            background: #4caf50;
+            color: white;
+            border: none;
+            border-radius: 25px;
+            cursor: pointer;
+            transition: background 0.2s, transform 0.1s;
+            margin-top: 15px;
+            box-shadow: 0 4px 6px rgba(0,0,0,0.2);
+        }
+        .menu-btn:hover {
+            background: #43a047;
+            transform: scale(1.05);
+        }
+        /* CSS Animations */
+        @keyframes walkIn {
+            0% { transform: translateX(-150px) translateY(10px) rotate(-5deg); }
+            50% { transform: translateX(-50px) translateY(-5px) rotate(5deg); }
+            100% { transform: translateX(0) translateY(0) rotate(0); }
+        }
+        @keyframes bounceIn {
+            0% { transform: scale(0.3); opacity: 0; }
+            50% { transform: scale(1.05); }
+            70% { transform: scale(0.9); }
+            100% { transform: scale(1); opacity: 1; }
+        }
+    </style>
+</head>
+<body>
+
+<div id="game-container">
+    <!-- UI Panel Layer -->
+    <div id="ui-panel">
+        Score: <span id="score">0</span> | Time: <span id="timer">30</span>s
+    </div>
+    
+    <!-- Pharmacy Shelf Container -->
+    <div class="shelf">
+        <div class="shelf-title">MKP Dispensing set</div>
+        <div class="medication" draggable="true" id="med-painkiller" style="border-color: #e91e63;">Dicloran<br>💊</div>
+        <div class="medication" draggable="true" id="med-diarrhea" style="border-color: #e91e63;">Loramide<br>💊</div>
+        <div class="medication" draggable="true" id="med-bloating" style="border-color: #4caf50;">Gazgo<br>💊</div>
+        <div class="medication" draggable="true" id="med-stomach cramp" style="border-color: #4caf50;">Dhacopan<br>💊</div>
+	<div class="medication" draggable="true" id="med-PCM" style="border-color: #4caf50;">Ifimol<br>💊</div>
+        <div class="medication" draggable="true" id="med-antifungal" style="border-color: #ff9800;">MK Clotriderm<br>🗞️</div>
+	<div class="medication" draggable="true" id="med-antibacterial" style="border-color: #ff9800;">Fucid cream<br>🗞️</div>
+	<div class="medication" draggable="true" id="med-runnynose" style="border-color: #ff9800;">Stadeltine<br>💊</div>
+        <div class="medication" draggable="true" id="med-runnynosedrowsy" style="border-color: #ff9800;">Antamin<br>💊</div>
+    </div>
+
+    <!-- Interactive Counter & Drop Basket -->
+    <div class="counter"></div>
+    <div class="basket" id="drop-basket">Drop Medicine Here</div>
+
+    <!-- Dynamic Customer Elements -->
+    <div id="customer-area"></div>
+
+    <!-- Win/Loss Text Popup -->
+    <div id="feedback"></div>
+
+    <!-- NEW: Main Start Menu Screen Overlay -->
+    <div id="start-screen" class="overlay-screen">
+        <h1 style="font-size: 42px; color: #0288d1; margin-bottom: 10px;">Virtual Pharmacy Training</h1>
+        <p style="font-size: 18px; color: #b0bec5; max-width: 500px; margin-bottom: 20px;">
+            Match the oncoming pharmacy customers with the correct medications before the timer ends!
+        </p>
+        <button class="menu-btn" onclick="startGame()">Start Shift</button>
+    </div>
+
+    <!-- Random Scenario Event Overlay Box -->
+    <div id="scenario-screen" class="overlay-screen" style="display: none;">
+        <h2 style="color: #ffb74d; font-size: 32px; margin-bottom: 10px;">⚠️ Random Pharmacy Incident!</h2>
+        <p id="scenario-text" style="font-size: 18px; max-width: 600px; margin-bottom: 20px;"></p>
+        <div class="choice-container" id="scenario-choices"></div>
+    </div>
+
+    <!-- Game Over Screen Overlay Layout -->
+    <div id="game-over-screen" class="overlay-screen" style="display: none;">
+        <h1 style="font-size: 48px; color: #ff9800; margin-bottom: 10px;">Shift Ended!</h1>
+        <p style="font-size: 24px; margin-bottom: 15px;">Your Total Pharmacy Score: <span id="final-score">0</span></p>
+        <p id="performance-review" style="font-size: 18px; color: #b0bec5; margin-bottom: 25px; max-width: 500px; padding: 0 10px;"></p>
+        <button class="menu-btn" onclick="restartGame()">Work Next Shift</button>
+    </div>
+</div>
+
+<script>
+// ==========================================
+// 1. GAME STATE & VARIABLES
+// ==========================================
+let score = 0;
+let timeLeft = 60;
+let timerInterval;
+let customerTimeout;
+
+const scenarios = [
+    { symptom: "I have gout pain now. Please give me some painkiller", correct: "med-painkiller" },
+    { symptom: "I have UTI and my stomach has mild discomfort. What medication do you suggest?", correct: "med-stomach cramp" },
+    { symptom: "I feel itchy around my inner thigh area because I sweat a lot.", correct: "med-antifungal" },
+    { symptom: "I just had a huge meal and feel like my stomach will explode. Please help!", correct: "med-bloating" },
+    { symptom: "The weather is so hot and I am starting to get feverish", correct: "med-PCM" },
+    { symptom: "I just fell down and my knees are scraped. My wound is clean but what else do you recommend?", correct: "med-antibacterial" },
+    { symptom: "I kept sneezing and I have a runny nose. I want something non-drowsy please", correct: "med-runnynose" },
+    { symptom: "I find it a bit difficult to sleep at night because of my itchy skin. Anything that I can take to make me sleep better?", correct: "med-runnynosedrowsy" },
+    { symptom: "I have been going to the toilet non-stop, maybe because I ate something wrong. I need this to stop!", correct: "med-diarrhea" },
+    { symptom: "I went for a jog yesterday and I think I pulled a muscle, please give me something to relieve my pain", correct: "med-painkiller" },
+    { symptom: "I have period cramps. Already bought Ponstan 500mg. Can you give me something to stop my stomach cramps too?", correct: "med-stomach cramp" },
+    { symptom: "I have a big pimple on my scalp. Anything that I can apply on it? ", correct: "med-antibacterial" }
+];
+let currentScenario = {};
+
+// DOM Elements
+const startScreen = document.getElementById('start-screen');
+const gameOverScreen = document.getElementById('game-over-screen');
+const customerArea = document.getElementById('customer-area');
+const basket = document.getElementById('drop-basket');
+const scoreDisplay = document.getElementById('score');
+const timerDisplay = document.getElementById('timer');
+const feedback = document.getElementById('feedback');
+const finalScoreDisplay = document.getElementById('final-score');
+const reviewDisplay = document.getElementById('performance-review');
+
+// ==========================================
+// 2. GAME CONTROLLERS
+// ==========================================
+function startGame() {
+    // Clear all lingering intervals or delayed timers
+    clearInterval(timerInterval);
+    clearTimeout(customerTimeout);
+    
+    // Reset core metrics
+    score = 0;
+    timeLeft = 60;
+    
+    activeScenarios = [...scenarios]; 
+
+    // Synch visual values
+    scoreDisplay.innerText = score;
+    timerDisplay.innerText = timeLeft;
+    
+    // Hide overlay panels
+    startScreen.style.display = 'none';
+    gameOverScreen.style.display = 'none';
+    
+    // Prime loops
+    spawnCustomer();
+    timerInterval = setInterval(runClockCountdown, 1000);
+}
+
+function runClockCountdown() {
+    timeLeft--;
+    timerDisplay.innerText = timeLeft;
+    
+    if (timeLeft <= 0) {
+        endGame();
+    }
+}
+
+function endGame() {
+    clearInterval(timerInterval);
+    clearTimeout(customerTimeout);
+    
+    // Show high-score overlay panel
+    gameOverScreen.style.display = 'flex';
+    finalScoreDisplay.innerText = score;
+    
+    // Evaluate employee performance
+    if (score >= 120) {
+        reviewDisplay.innerText = "Excellent job! You have mastered a small part of the dispensing set.";
+    } else if (score >= 100) {
+        reviewDisplay.innerText = "Good job but You can do better";
+    } else {
+        reviewDisplay.innerText = "Study more please";
+    }
+}
+
+function restartGame() {
+    startGame();
+}
+
+// ==========================================
+// 3. INTERACTIVE LOGIC
+// ==========================================
+function spawnCustomer() {
+    if (timeLeft <= 0) return;
+    
+    customerArea.innerHTML = '';
+    feedback.style.display = 'none';
+    
+    if (activeScenarios.length === 0) {
+        endGame();
+        return;
+    }
+    
+    const randomIndex = Math.floor(Math.random() * activeScenarios.length);
+    
+    currentScenario = activeScenarios.splice(randomIndex, 1)[0];
+
+    const customer = document.createElement('div');
+    customer.className = 'customer-sprite';
+    customer.innerHTML = '💃🏻';
+
+    const bubble = document.createElement('div');
+    bubble.className = 'customer-bubble';
+    bubble.innerText = currentScenario.symptom;
+
+    customerArea.appendChild(customer);
+    customerArea.appendChild(bubble);
+}
+
+// Drag & Drop event maps
+document.querySelectorAll('.medication').forEach(item => {
+    item.addEventListener('dragstart', (e) => {
+        if (timeLeft <= 0) return;
+        e.dataTransfer.setData('text/plain', e.target.id);
+    });
+});
+
+basket.addEventListener('dragover', (e) => {
+    e.preventDefault();
+    if (timeLeft > 0) basket.classList.add('drag-over');
+});
+
+basket.addEventListener('dragleave', () => {
+    basket.classList.remove('drag-over');
+});
+
+basket.addEventListener('drop', (e) => {
+    e.preventDefault();
+    basket.classList.remove('drag-over');
+    if (timeLeft <= 0) return;
+    
+    const draggedId = e.dataTransfer.getData('text/plain');
+    
+    if (draggedId === currentScenario.correct) {
+        score += 10;
+        scoreDisplay.innerText = score;
+        showFeedback("Correct choice! +10 Points", "#2e7d32");
+    } else {
+        showFeedback("Wrong medication! Try again.", "#c62828");
+    }
+});
+
+function showFeedback(text, color) {
+    feedback.innerText = text;
+    feedback.style.color = color;
+    feedback.style.display = 'block';
+    
+    if (color === "#2e7d32") {
+        // Track the timeout handle cleanly to clear it out safely later
+        customerTimeout = setTimeout(spawnCustomer, 1500);
+    }
+}
+
+
+</script>
+
+</body>
+</html>
